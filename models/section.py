@@ -1,5 +1,6 @@
 from typing import List, Tuple, Optional
 
+
 class Section:
     """
     Represents a section of text or command in the input.
@@ -77,7 +78,8 @@ def parse_section(input_text: str) -> Section:
         Section: The parsed Section object.
     """
     lines = input_text.split('\n')
-    opening_labels, closing_labels, section_type, command, instruction, parameters, text_content = parse_lines(lines)
+    opening_labels, closing_labels, section_type, command, instruction, parameters, text_content = parse_lines(
+        lines)
 
     if section_type == Section.SectionType.TEXT:
         return Section(
@@ -214,7 +216,8 @@ def handle_parameters_state(stripped_line: str, parameters: List[Tuple[str, List
         parameters = add_parameter(parameters, key, value)
         return 'parameters', parameters, closing_labels, False
     else:
-        raise ValueError(f"Unexpected line in parameters state: {stripped_line}")
+        raise ValueError(
+            f"Unexpected line in parameters state: {stripped_line}")
 
 
 def handle_text_state(stripped_line: str, closing_labels: List[str], text_content: List[str]) -> Tuple[str, List[str], List[str], bool]:

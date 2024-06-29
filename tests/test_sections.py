@@ -1,6 +1,7 @@
 import unittest
 from models.section import Section, parse_section, parse_lines, handle_start_state, handle_command_state, handle_parameters_state, handle_text_state, add_parameter
 
+
 class TestSection(unittest.TestCase):
 
     def test_section_initialization(self):
@@ -67,7 +68,8 @@ class TestSection(unittest.TestCase):
         self.assertEqual(section.section_type, Section.SectionType.COMMAND)
         self.assertEqual(section.command, "command")
         self.assertIsNone(section.instruction)
-        self.assertEqual(section.parameters, [("param1", ["value1"]), ("param2", ["value2"])])
+        self.assertEqual(section.parameters, [
+                         ("param1", ["value1"]), ("param2", ["value2"])])
         self.assertIsNone(section.text_content)
 
     def test_add_parameter(self):
@@ -75,7 +77,8 @@ class TestSection(unittest.TestCase):
         parameters = add_parameter(parameters, "param1", "value1")
         parameters = add_parameter(parameters, "param1", "value2")
         parameters = add_parameter(parameters, "param2", "value3")
-        self.assertEqual(parameters, [("param1", ["value1", "value2"]), ("param2", ["value3"])])
+        self.assertEqual(
+            parameters, [("param1", ["value1", "value2"]), ("param2", ["value3"])])
 
     def test_handle_start_state(self):
         state, section_type, command, instruction, opening_labels, text_content, replay = handle_start_state(
