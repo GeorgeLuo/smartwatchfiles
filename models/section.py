@@ -1,6 +1,5 @@
 from typing import List, Tuple, Optional
 
-
 class Section:
     """
     Represents a section of text or command in the input.
@@ -78,8 +77,7 @@ def parse_section(input_text: str) -> Section:
         Section: The parsed Section object.
     """
     lines = input_text.split('\n')
-    opening_labels, closing_labels, section_type, command, instruction, parameters, text_content = parse_lines(
-        lines)
+    opening_labels, closing_labels, section_type, command, instruction, parameters, text_content = parse_lines(lines)
 
     if section_type == Section.SectionType.TEXT:
         return Section(
@@ -120,30 +118,31 @@ def parse_lines(lines: List[str]) -> Tuple[List[str], List[str], Optional[str], 
     text_content = []
 
     state = 'start'
+    line_index = 0
 
-    for line in lines:
-        stripped_line = line.strip()
+    while line_index < len(lines):
+        stripped_line = lines[line_index].strip()
 
         if state == 'start':
-            state, section_type, command, instruction, opening_labels, text_content = handle_start_state(
+            state, section_type, command, instruction, opening_labels, text_content, replay = handle_start_state(
                 stripped_line, section_type, command, instruction, opening_labels, text_content)
-
         elif state == 'command':
-            state, parameters, instruction = handle_command_state(
+            state, parameters, instruction, replay = handle_command_state(
                 stripped_line, parameters, instruction)
-
         elif state == 'parameters':
-            state, parameters, closing_labels = handle_parameters_state(
+            state, parameters, closing_labels, replay = handle_parameters_state(
                 stripped_line, parameters, closing_labels)
-
         elif state == 'text':
-            state, closing_labels, text_content = handle_text_state(
+            state, closing_labels, text_content, replay = handle_text_state(
                 stripped_line, closing_labels, text_content)
+
+        if not replay:
+            line_index += 1
 
     return opening_labels, closing_labels, section_type, command, instruction, parameters, text_content
 
 
-def handle_start_state(stripped_line: str, section_type: Optional[str], command: Optional[str], instruction: List[str], opening_labels: List[str], text_content: List[str]) -> Tuple[str, Optional[str], Optional[str], List[str], List[str], List[str]]:
+def handle_start_state(stripped_line: str, section_type: Optional[str], command: Optional[str], instruction: List[str], opening_labels: List[str], text_content: List[str]) -> Tuple[str, Optional[str], Optional[str], List[str], List[str], List[str], bool]:
     """
     Handles the 'start' state of parsing.
 
@@ -156,28 +155,25 @@ def handle_start_state(stripped_line: str, section_type: Optional[str], command:
         text_content (List[str]): The text content of the section.
 
     Returns:
-        Tuple: A tuple containing the next state, section type, command, instruction, opening labels, and text content.
+        Tuple: A tuple containing the next state, section type, command, instruction, opening labels, text content, and a replay flag.
     """
     if stripped_line.startswith('/'):
-        # Collect opening labels
         opening_labels.append(stripped_line[1:])
-        return 'start', section_type, command, instruction, opening_labels, text_content
+        return 'start', section_type, command, instruction, opening_labels, text_content, False
     elif stripped_line.startswith('?'):
-        # Identify command section and parse command
         section_type = Section.SectionType.COMMAND
         parts = stripped_line.split(maxsplit=1)
         command = parts[0][1:]
         if len(parts) > 1:
             instruction.append(parts[1])
-        return 'command', section_type, command, instruction, opening_labels, text_content
+        return 'command', section_type, command, instruction, opening_labels, text_content, False
     else:
-        # Identify text section and collect text content
         section_type = Section.SectionType.TEXT
         text_content.append(stripped_line)
-        return 'text', section_type, command, instruction, opening_labels, text_content
+        return 'text', section_type, command, instruction, opening_labels, text_content, False
 
 
-def handle_command_state(stripped_line: str, parameters: List[Tuple[str, List[str]]], instruction: List[str]) -> Tuple[str, List[Tuple[str, List[str]]], List[str]]:
+def handle_command_state(stripped_line: str, parameters: List[Tuple[str, List[str]]], instruction: List[str]) -> Tuple[str, List[Tuple[str, List[str]]], List[str], bool]:
     """
     Handles the 'command' state of parsing.
 
@@ -187,46 +183,41 @@ def handle_command_state(stripped_line: str, parameters: List[Tuple[str, List[st
         instruction (List[str]): Instructions associated with the command.
 
     Returns:
-        Tuple: A tuple containing the next state, parameters, and instruction.
+        Tuple: A tuple containing the next state, parameters, instruction, and a replay flag.
     """
     if '=' in stripped_line:
-        # Parse parameters in command section
         key, value = stripped_line.split('=', 1)
         parameters = add_parameter(parameters, key, value)
-        return 'parameters', parameters, instruction
+        return 'parameters', parameters, instruction, False
     else:
-        # Collect additional instruction lines
         instruction.append(stripped_line)
-        return 'command', parameters, instruction
+        return 'command', parameters, instruction, False
 
 
-def handle_parameters_state(stripped_line: str, parameters: List[Tuple[str, List[str]]], closing_labels: List[str]) -> Tuple[str, List[Tuple[str, List[str]]], List[str]]:
+def handle_parameters_state(stripped_line: str, parameters: List[Tuple[str, List[str]]], closing_labels: List[str]) -> Tuple[str, List[Tuple[str, List[str]]], List[str], bool]:
     """
     Handles the 'parameters' state of parsing.
 
     Args:
         stripped_line (str): The current line being parsed.
         parameters (List[Tuple[str, List[str]]]): Parameters associated with the command.
-        opening_labels (List[str]): Labels that mark the beginning of the section.
+        closing_labels (List[str]): Labels that mark the end of the section.
 
     Returns:
-        Tuple: A tuple containing the next state, parameters, and opening labels.
+        Tuple: A tuple containing the next state, parameters, closing labels, and a replay flag.
     """
     if stripped_line.startswith('\\'):
-        # Collect closing labels
         closing_labels.append(stripped_line[1:])
-        return 'parameters', parameters, closing_labels
+        return 'parameters', parameters, closing_labels, False
     elif '=' in stripped_line:
-        # Parse additional parameters
         key, value = stripped_line.split('=', 1)
         parameters = add_parameter(parameters, key, value)
-        return 'parameters', parameters, closing_labels
+        return 'parameters', parameters, closing_labels, False
     else:
-        raise ValueError(
-            f"Unexpected line in parameters state: {stripped_line}")
+        raise ValueError(f"Unexpected line in parameters state: {stripped_line}")
 
 
-def handle_text_state(stripped_line: str, closing_labels: List[str], text_content: List[str]) -> Tuple[str, List[str], List[str]]:
+def handle_text_state(stripped_line: str, closing_labels: List[str], text_content: List[str]) -> Tuple[str, List[str], List[str], bool]:
     """
     Handles the 'text' state of parsing.
 
@@ -236,16 +227,14 @@ def handle_text_state(stripped_line: str, closing_labels: List[str], text_conten
         text_content (List[str]): The text content of the section.
 
     Returns:
-        Tuple: A tuple containing the next state, closing labels, and text content.
+        Tuple: A tuple containing the next state, closing labels, text content, and a replay flag.
     """
     if stripped_line.startswith('\\'):
-        # Collect closing labels
         closing_labels.append(stripped_line[1:])
-        return 'text', closing_labels, text_content
+        return 'text', closing_labels, text_content, False
     else:
-        # Collect additional text content
         text_content.append(stripped_line)
-        return 'text', closing_labels, text_content
+        return 'text', closing_labels, text_content, False
 
 
 def add_parameter(parameters: List[Tuple[str, List[str]]], key: str, value: str) -> List[Tuple[str, List[str]]]:
