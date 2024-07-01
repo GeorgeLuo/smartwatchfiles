@@ -15,7 +15,6 @@ from ecs.managers.component_manager import ComponentManager
 from ecs.managers.entity_manager import EntityManager
 from ecs.utils.generator_parser import split_into_sections as gen_split_into_sections
 from models.section import parse_section
-from ecs.components.dirty_component import mark_raw_text_as_dirty
 
 # The watcher system handles file change events and parses the file into
 # sections, then parses out the sections SectionComponent metadata,
@@ -49,19 +48,18 @@ def compute_hash(file_path: str) -> str:
     return hasher.hexdigest()
 
 
-def construct_sections_map(section_entities: list, component_manager: ComponentManager) -> tuple:
+def construct_sections_map(section_entities: list, component_manager: ComponentManager) -> dict:
     """
-    Construct a map of sections based on their raw text and check if any are dirty.
+    Construct a map of sections based on their raw text.
 
     Args:
         section_entities (list): List of section entities.
         component_manager (ComponentManager): The component manager to manage components.
 
     Returns:
-        tuple: A tuple containing the sections map and a boolean indicating if any section is dirty.
+        dict: A dictionary where the keys are raw strings and the values are lists of tuples containing entities and their respective RawTextComponent.
     """
     sections_map = {}
-    dirty_found = False
 
     for entity in section_entities:
         section_component = component_manager.get_component(
@@ -70,10 +68,8 @@ def construct_sections_map(section_entities: list, component_manager: ComponentM
             sections_map[section_component.raw_string] = []
         sections_map[section_component.raw_string].append(
             (entity, section_component))
-        dirty_found = section_component.dirty or dirty_found
-        section_component.dirty = False
 
-    return sections_map, dirty_found
+    return sections_map
 
 
 def parse_config_sections(config_sections: list) -> dict:
@@ -142,9 +138,7 @@ def process_sections(sections_data: list, known_sections_map: dict, entity_manag
                 entity, IndexComponent)
             if index_component.index != index:
                 index_component.index = index
-                raw_text_component.dirty = True
-                mark_raw_text_as_dirty(entity, component_manager)
-
+                
 
 def mark_remaining_sections_for_deletion(known_sections_map: dict, component_manager: ComponentManager):
     """
@@ -259,7 +253,7 @@ class GeneratorParsingSystem():
         # Map sections to entities
         section_entities = component_manager.get_entities_with_component(
             RawTextComponent)
-        known_sections_map, _ = construct_sections_map(
+        known_sections_map = construct_sections_map(
             section_entities, component_manager)
 
         # Process sections

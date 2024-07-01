@@ -36,9 +36,8 @@ class TestGeneratorParsingSystem(unittest.TestCase):
         component_manager = MagicMock()
         component_manager.get_component.side_effect = lambda entity, comp: RawTextComponent(entity, f"raw_text_{entity}", "hash")
         section_entities = [1, 2, 3]
-        sections_map, dirty_found = construct_sections_map(section_entities, component_manager)
+        sections_map = construct_sections_map(section_entities, component_manager)
         self.assertEqual(len(sections_map), 3)
-        # self.assertFalse(dirty_found)
 
     def test_parse_config_sections(self):
         config_sections = [{'raw_text': '!key1=value1\n!key2=value2\n'}, {'raw_text': '!key3=value3\n'}]
@@ -82,7 +81,7 @@ class TestGeneratorParsingSystem(unittest.TestCase):
         component_manager = MagicMock()
         gps = GeneratorParsingSystem(event_bus)
         event_data = {'file_name': 'fake_file'}
-        gps.handle_file_modified_v2(event_data, entity_manager, component_manager)
+        gps.handle_file_modified(event_data, entity_manager, component_manager)
         self.assertTrue(mock_compute_hash.called)
         self.assertTrue(mock_gen_split.called)
         self.assertTrue(mock_parse_section.called)
