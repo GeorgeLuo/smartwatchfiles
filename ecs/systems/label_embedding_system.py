@@ -2,7 +2,6 @@ import re
 from ecs.components.instruction_component import InstructionComponent, set_instruction
 from ecs.components.linked_entities_by_embedding_component import add_linked_label, embeddings_have_changed
 from ecs.components.label_components import get_replacement_text_by_label
-from ecs.components.raw_text_component import RawTextComponent
 from ecs.components.rendered_text_component import RenderedTextComponent, set_rendered_text_component
 from ecs.components.text_content_component import TextContentComponent
 from ecs.managers.component_manager import ComponentManager, Entity
