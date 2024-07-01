@@ -15,7 +15,7 @@ from ecs.managers.component_manager import ComponentManager
 from ecs.managers.entity_manager import EntityManager
 from ecs.utils.generator_parser import split_into_sections as gen_split_into_sections
 from models.section import parse_section
-from ecs.components.dirty_component import DirtyComponent, mark_raw_text_as_dirty
+from ecs.components.dirty_component import mark_raw_text_as_dirty
 
 # The watcher system handles file change events and parses the file into
 # sections, then parses out the sections SectionComponent metadata,

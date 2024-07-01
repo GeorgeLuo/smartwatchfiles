@@ -11,6 +11,7 @@ from ecs.components.text_content_component import TextContentComponent
 from ecs.managers.component_manager import ComponentManager, Entity
 from ecs.managers.entity_manager import EntityManager
 
+
 class TestLabelEmbeddingSystem(unittest.TestCase):
 
     @patch('ecs.systems.label_embedding_system.embeddings_have_changed')
@@ -22,20 +23,23 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         # Test case where embeddings have changed
         mock_embeddings_have_changed.return_value = True
         component_manager.get_component.return_value.text_content = "New Text Content"
-        result = reset_text_if_embeddings_changed(component_manager, entity, component_type)
+        result = reset_text_if_embeddings_changed(
+            component_manager, entity, component_type)
         self.assertEqual(result, "New Text Content")
 
         # Test case where embeddings have not changed but RenderedTextComponent exists
         mock_embeddings_have_changed.return_value = False
         component_manager.has_component.return_value = True
         component_manager.get_component.return_value.rendered_text = "Rendered Text"
-        result = reset_text_if_embeddings_changed(component_manager, entity, component_type)
+        result = reset_text_if_embeddings_changed(
+            component_manager, entity, component_type)
         self.assertEqual(result, "Rendered Text")
 
         # Test case where embeddings have not changed and RenderedTextComponent does not exist
         component_manager.has_component.return_value = False
         component_manager.get_component.return_value.text_content = "Original Text Content"
-        result = reset_text_if_embeddings_changed(component_manager, entity, component_type)
+        result = reset_text_if_embeddings_changed(
+            component_manager, entity, component_type)
         self.assertEqual(result, "Original Text Content")
 
     @patch('ecs.systems.label_embedding_system.get_replacement_text_by_label')
@@ -49,13 +53,16 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         # Test case where replacement text is found
         mock_get_replacement_text_by_label.return_value = "replacement"
         process_labels_in_text(component_manager, entity, base_text)
-        mock_set_rendered_text_component.assert_called_with(component_manager, entity, "This is a replacement test.")
-        mock_add_linked_label.assert_called_with(component_manager, entity, "label", "replacement")
+        mock_set_rendered_text_component.assert_called_with(
+            component_manager, entity, "This is a replacement test.")
+        mock_add_linked_label.assert_called_with(
+            component_manager, entity, "label", "replacement")
 
         # Test case where replacement text is not found
         mock_get_replacement_text_by_label.return_value = None
         process_labels_in_text(component_manager, entity, base_text)
-        mock_set_rendered_text_component.assert_called_with(component_manager, entity, base_text)
+        mock_set_rendered_text_component.assert_called_with(
+            component_manager, entity, base_text)
 
     @patch('ecs.systems.label_embedding_system.get_replacement_text_by_label')
     @patch('ecs.systems.label_embedding_system.set_instruction')
@@ -68,13 +75,16 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         # Test case where replacement text is found
         mock_get_replacement_text_by_label.return_value = "replacement"
         process_labels_in_instruction(component_manager, entity, base_text)
-        mock_set_instruction.assert_called_with(component_manager, entity, "This is a replacement instruction.")
-        mock_add_linked_label.assert_called_with(component_manager, entity, "label", "replacement")
+        mock_set_instruction.assert_called_with(
+            component_manager, entity, "This is a replacement instruction.")
+        mock_add_linked_label.assert_called_with(
+            component_manager, entity, "label", "replacement")
 
         # Test case where replacement text is not found
         mock_get_replacement_text_by_label.return_value = None
         process_labels_in_instruction(component_manager, entity, base_text)
-        mock_set_instruction.assert_called_with(component_manager, entity, base_text)
+        mock_set_instruction.assert_called_with(
+            component_manager, entity, base_text)
 
     @patch('ecs.systems.label_embedding_system.reset_text_if_embeddings_changed')
     @patch('ecs.systems.label_embedding_system.process_labels_in_text')
@@ -105,14 +115,21 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         system.update(entity_manager, component_manager)
 
         # Check calls for TextContentComponent processing
-        mock_reset_text_if_embeddings_changed.assert_any_call(component_manager, entity1, TextContentComponent)
-        mock_reset_text_if_embeddings_changed.assert_any_call(component_manager, entity2, TextContentComponent)
-        mock_process_labels_in_text.assert_any_call(component_manager, entity1, "Base Text")
-        mock_process_labels_in_text.assert_any_call(component_manager, entity2, "Base Text")
+        mock_reset_text_if_embeddings_changed.assert_any_call(
+            component_manager, entity1, TextContentComponent)
+        mock_reset_text_if_embeddings_changed.assert_any_call(
+            component_manager, entity2, TextContentComponent)
+        mock_process_labels_in_text.assert_any_call(
+            component_manager, entity1, "Base Text")
+        mock_process_labels_in_text.assert_any_call(
+            component_manager, entity2, "Base Text")
 
         # Check calls for InstructionComponent processing
-        component_manager.get_component.assert_any_call(entity1, InstructionComponent)
-        mock_process_labels_in_instruction.assert_any_call(component_manager, entity1, "Instruction Text")
+        component_manager.get_component.assert_any_call(
+            entity1, InstructionComponent)
+        mock_process_labels_in_instruction.assert_any_call(
+            component_manager, entity1, "Instruction Text")
+
 
 if __name__ == '__main__':
     unittest.main()
