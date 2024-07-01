@@ -8,7 +8,6 @@ from ecs.components.text_content_component import TextContentComponent
 from ecs.managers.component_manager import ComponentManager, Entity
 from ecs.managers.entity_manager import EntityManager
 
-
 def get_in_focus_entities(component_manager: ComponentManager) -> Set[Entity]:
     """
     Get entities labeled with focus.
