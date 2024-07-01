@@ -16,11 +16,11 @@ def get_in_focus_entities(component_manager: ComponentManager) -> Set[Entity]:
     - This function retrieves all entities that have the `OpeningLabelComponent` and checks if they are labeled with 'focus'.
     - Entities with the 'focus' label are added to the `in_focus` set.
 
-    Inputs:
-    - component_manager: ComponentManager
+    Args:
+        component_manager (ComponentManager): The component manager to manage components.
 
-    Outputs:
-    - Set of entities that are in focus.
+    Returns:
+        Set[Entity]: of entities that are in focus.
     """
     in_focus = set()
 
@@ -41,12 +41,9 @@ def handle_marked_for_deletion_entities(entity_manager: EntityManager, component
     Business Logic:
     - This function iterates over entities that have the `MarkedForDeletionComponent` and destroys them using the `entity_manager`.
 
-    Inputs:
-    - entity_manager: EntityManager
-    - component_manager: ComponentManager
-
-    Outputs:
-    - None
+    Args:
+        entity_manager (EntityManager): EntityManager
+        component_manager (ComponentManager): ComponentManager
     """
     # TODO: not sure why this can't happen earlier
     for entity in component_manager.get_entities_with_component(
@@ -65,13 +62,13 @@ def construct_sections_map(section_entities: Set[Entity], entity_manager: Entity
     - If an entity has a `RenderedTextComponent`, its rendered text is used.
     - Otherwise, the raw text content is used.
 
-    Inputs:
-    - section_entities: Set of entities to process
-    - entity_manager: EntityManager
-    - component_manager: ComponentManager
+    Args:
+        section_entities: Set of entities to process
+        entity_manager: EntityManager
+        component_manager: ComponentManager
 
-    Outputs:
-    - Dictionary mapping indices to text content.
+    Returns:
+        Dict[int, str]: mapping of indices to text content.
     """
     sections_map = {}
 
@@ -107,11 +104,11 @@ def render_text(sections_map: Dict[int, str]) -> str:
     - This function concatenates text sections in order of their indices.
     - Sections are separated by double newlines.
 
-    Inputs:
-    - sections_map: Dictionary mapping indices to text content
+    Args:
+        sections_map: Dictionary mapping indices to text content
 
-    Outputs:
-    - Complete rendered text as a single string.
+    Returns:
+        str: Complete rendered text as a single string.
     """
     complete_text = ''
     index = 0
@@ -157,12 +154,9 @@ class RenderSystem():
         - Constructs a sections map from either in-focus entities or all entities with raw text components.
         - Renders the text and writes it to a file if it has changed.
 
-        Inputs:
-        - entity_manager: EntityManager
-        - component_manager: ComponentManager
-
-        Outputs:
-        - None
+        Args:
+            entity_manager: EntityManager
+            component_manager: ComponentManager
         """
         handle_marked_for_deletion_entities(entity_manager, component_manager)
 
