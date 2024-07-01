@@ -47,7 +47,6 @@ def handle_insert(entity, component_manager: ComponentManager, cmd_comp: Command
         cmd_comp (CommandComponent): The command component containing the command details.
     """
     rendered_text = handle_insert_command(cmd_comp.parameters)
-    cmd_comp.dirty = False
     set_rendered_text_component(component_manager, entity, rendered_text)
 
 
@@ -84,8 +83,6 @@ def handle_run(entity, component_manager: ComponentManager, cmd_comp: CommandCom
     except Exception as e:
         error_message = f"An error occurred while executing the command: {str(e)}"
         set_rendered_text_component(component_manager, entity, error_message)
-    finally:
-        cmd_comp.dirty = False
 
 
 def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandComponent, llm_cache: dict):
@@ -123,7 +120,6 @@ def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandCom
         if write_params:
             write_to_file(write_params[0], rendered_text)
 
-    cmd_comp.dirty = False
     set_rendered_text_component(component_manager, entity, rendered_text)
 
 

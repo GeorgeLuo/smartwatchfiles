@@ -40,7 +40,6 @@ class TestCommandSystem(unittest.TestCase):
         handle_insert(self.entity, self.component_manager, self.cmd_comp)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Rendered Text')
-        self.assertFalse(self.cmd_comp.dirty)
 
     @patch('ecs.systems.command_system.subprocess.Popen')
     @patch('ecs.systems.command_system.set_rendered_text_component')
@@ -53,7 +52,6 @@ class TestCommandSystem(unittest.TestCase):
         handle_run(self.entity, self.component_manager, self.cmd_comp)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Command executed successfully.\nOutput:\noutput')
-        self.assertFalse(self.cmd_comp.dirty)
 
     @patch('ecs.systems.command_system.subprocess.Popen')
     @patch('ecs.systems.command_system.set_rendered_text_component')
@@ -66,7 +64,6 @@ class TestCommandSystem(unittest.TestCase):
         handle_run(self.entity, self.component_manager, self.cmd_comp)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Command failed with return code 1.\nError:\nerror')
-        self.assertFalse(self.cmd_comp.dirty)
 
     @patch('ecs.systems.command_system.call_llm')
     @patch('ecs.systems.command_system.build_query')
@@ -80,7 +77,6 @@ class TestCommandSystem(unittest.TestCase):
                    self.cmd_comp, llm_cache)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Generated Text')
-        self.assertFalse(self.cmd_comp.dirty)
 
     @patch('ecs.systems.command_system.os.makedirs')
     @patch('ecs.systems.command_system.open', new_callable=unittest.mock.mock_open)
