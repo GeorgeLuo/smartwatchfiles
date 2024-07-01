@@ -211,10 +211,10 @@ class GeneratorParsingSystem():
         for event_type, event_data in events:
             if event_type == "file_modified":
                 # Handle file modified event
-                self.handle_file_modified_v2(
+                self.handle_file_modified(
                     event_data, entity_manager, component_manager)
 
-    def handle_file_modified_v2(self, event_data: dict, entity_manager: EntityManager, component_manager: ComponentManager):
+    def handle_file_modified(self, event_data: dict, entity_manager: EntityManager, component_manager: ComponentManager):
         """
         Handle the file modified event by processing the file and updating entities.
 
