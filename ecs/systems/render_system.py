@@ -141,8 +141,9 @@ class RenderSystem():
     - update: Updates the system by processing entities and rendering text.
     """
 
-    def __init__(self):
+    def __init__(self, generated_file):
         self.rendered_doc = None
+        self.generated_file = generated_file
         pass
 
     def update(self, entity_manager: EntityManager, component_manager: ComponentManager):
@@ -177,5 +178,5 @@ class RenderSystem():
         rendered_doc = render_text(sections_map)
         if self.rendered_doc is None or self.rendered_doc != rendered_doc:
             self.rendered_doc = rendered_doc
-            with open('output.txt', 'w') as output_file:
+            with open(self.generated_file, 'w') as output_file:
                 output_file.write(rendered_doc)
