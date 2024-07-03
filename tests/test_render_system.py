@@ -79,7 +79,7 @@ class TestRenderSystem(unittest.TestCase):
 
     @patch('builtins.open', new_callable=unittest.mock.mock_open)
     def test_render_system_update(self, mock_open):
-        render_system = RenderSystem()
+        render_system = RenderSystem('output.txt')
         entity1 = Entity(1)
         entity2 = Entity(2)
 

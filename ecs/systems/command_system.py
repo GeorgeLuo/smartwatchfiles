@@ -15,7 +15,7 @@ from ecs.managers.entity_manager import EntityManager
 from ecs.utils.config_util import get_config
 
 
-def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, List[str]]], config_key: str) -> Optional[Model]:
+def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, List[str]]]) -> Optional[Model]:
     """
     Retrieve the latest parameter value for the given config key and "llm-api-key". 
     If not found, get the config value from the component manager.
@@ -37,7 +37,7 @@ def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, L
         return val
     
     # Retrieve the llm name
-    llm_name = get_latest_or_config(config_key)
+    llm_name = get_latest_or_config("llm")
     # Retrieve the llm-api-key
     llm_api_key = get_latest_or_config("llm-api-key")
     
@@ -95,14 +95,13 @@ def handle_run(entity, component_manager: ComponentManager, cmd_comp: CommandCom
         set_rendered_text_component(component_manager, entity, error_message)
 
 
-def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandComponent, llm_cache: dict):
+def handle_gen(entity, component_manager: ComponentManager, llm_cache: dict):
     """
     Handle the 'gen' command by generating text using a language model and updating the rendered text component.
 
     Args:
         entity: The entity to which the command belongs.
         component_manager (ComponentManager): The component manager instance.
-        cmd_comp (CommandComponent): The command component containing the command details.
         llm_cache (dict): Cache for language model responses.
     """
     instruction_comp = component_manager.get_component(
@@ -117,7 +116,7 @@ def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandCom
     if labels:
         return
 
-    model = get_model(component_manager, parameters, 'llm')
+    model = get_model(component_manager, parameters)
 
     query, query_key = build_query(instruction, parameters, model.name)
     cache_value = llm_cache.get(query_key)
@@ -126,6 +125,10 @@ def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandCom
     else:
         rate_limited, rendered_text = call_llm(
             instruction, parameters, model)
+        
+        if rate_limited:
+            pass
+
         llm_cache[query_key] = LLMCacheValue(rendered_text, rate_limited)
         write_params = next(
             (param[1] for param in parameters if param[0] == 'write'), None)
@@ -235,8 +238,7 @@ class CommandSystem:
                     parameters = component_manager.get_component(entity, ParametersComponent)
                     handle_insert(entity, component_manager, parameters)
                 case "gen":
-                    handle_gen(entity, component_manager,
-                               cmd_comp, self.llm_cache)
+                    handle_gen(entity, component_manager, self.llm_cache)
                 case "run":
                     handle_run(entity, component_manager, cmd_comp)
                 case _:
