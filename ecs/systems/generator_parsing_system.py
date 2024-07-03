@@ -1,12 +1,14 @@
 import hashlib
 import logging
 import threading
+from typing import List
 from ecs.components.command_component import CommandComponent
 from ecs.components.config_component import ConfigComponent
 from ecs.components.index_component import IndexComponent
 from ecs.components.instruction_component import InstructionComponent
 from ecs.components.label_components import ClosingLabelComponent, OpeningLabelComponent
 from ecs.components.mark_for_deletion_component import MarkedForDeletionComponent
+from ecs.components.parameters_component import ParametersComponent
 from ecs.components.raw_text_component import RawTextComponent
 from ecs.components.section_type_component import SectionTypeComponent
 from ecs.components.text_content_component import TextContentComponent
@@ -14,7 +16,7 @@ from ecs.event_bus import EventBus
 from ecs.managers.component_manager import ComponentManager
 from ecs.managers.entity_manager import EntityManager
 from ecs.utils.generator_parser import split_into_sections as gen_split_into_sections
-from models.section import parse_section
+from models.section import Section, parse_section
 
 # The watcher system handles file change events and parses the file into
 # sections, then parses out the sections SectionComponent metadata,
@@ -94,7 +96,7 @@ def parse_config_sections(config_sections: list) -> dict:
     return config_map
 
 
-def process_sections(sections_data: list, known_sections_map: dict, entity_manager: EntityManager, component_manager: ComponentManager, version_hash: str):
+def process_sections(sections_data: List[Section], known_sections_map: dict, entity_manager: EntityManager, component_manager: ComponentManager, version_hash: str):
     """
     Process sections and update or create entities based on the sections data.
 
@@ -119,6 +121,9 @@ def process_sections(sections_data: list, known_sections_map: dict, entity_manag
             if section.command is not None:
                 component_manager.add_component(
                     new_entity, CommandComponent(section.command, section.parameters))
+            if section.parameters is not None:
+                component_manager.add_component(
+                    new_entity, ParametersComponent(section.parameters))
             if section.instruction is not None:
                 component_manager.add_component(
                     new_entity, InstructionComponent(section.instruction))
