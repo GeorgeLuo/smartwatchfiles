@@ -3,20 +3,22 @@ import re
 import shlex
 import subprocess
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from command_handlers.insert import handle_insert_command
 from command_handlers.llm import Model, build_query, call_llm
 from ecs.components.command_component import CommandComponent, get_latest_parameter
 from ecs.components.instruction_component import InstructionComponent
+from ecs.components.parameters_component import ParametersComponent
 from ecs.components.rendered_text_component import set_rendered_text_component
 from ecs.managers.component_manager import ComponentManager
 from ecs.managers.entity_manager import EntityManager
 from ecs.utils.config_util import get_config
 
 
-def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, List[str]]], config_key: str) -> Model:
+def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, List[str]]], config_key: str) -> Optional[Model]:
     """
-    Retrieve the latest parameter value for the given config key. If not found, get the config value from the component manager.
+    Retrieve the latest parameter value for the given config key and "llm-api-key". 
+    If not found, get the config value from the component manager.
 
     Args:
         component_manager (ComponentManager): The component manager instance.
@@ -24,20 +26,28 @@ def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, L
         config_key (str): The configuration key to look up.
 
     Returns:
-        Model: The model configuration.
+        Optional[Model]: The model configuration, or None if not found.
     """
-    config_val = get_latest_parameter(parameters, config_key)
-    if config_val:
-        return config_val
-
-    config_val = get_config(component_manager, config_key)
-    if config_val:
-        return config_val
-
+    
+    def get_latest_or_config(key: str) -> Optional[str]:
+        # Function to retrieve the latest parameter value or config value
+        val = get_latest_parameter(parameters, key)
+        if not val:
+            val = get_config(component_manager, key)
+        return val
+    
+    # Retrieve the llm name
+    llm_name = get_latest_or_config(config_key)
+    # Retrieve the llm-api-key
+    llm_api_key = get_latest_or_config("llm-api-key")
+    
+    if llm_name and llm_api_key:
+        return Model(name=llm_name, api_key=llm_api_key)
+    
     return None
 
 
-def handle_insert(entity, component_manager: ComponentManager, cmd_comp: CommandComponent):
+def handle_insert(entity, component_manager: ComponentManager, parameters_component: ParametersComponent):
     """
     Handle the 'insert' command by processing the parameters and updating the rendered text component.
 
@@ -46,7 +56,7 @@ def handle_insert(entity, component_manager: ComponentManager, cmd_comp: Command
         component_manager (ComponentManager): The component manager instance.
         cmd_comp (CommandComponent): The command component containing the command details.
     """
-    rendered_text = handle_insert_command(cmd_comp.parameters)
+    rendered_text = handle_insert_command(parameters_component.render_parameters)
     set_rendered_text_component(component_manager, entity, rendered_text)
 
 
@@ -99,24 +109,26 @@ def handle_gen(entity, component_manager: ComponentManager, cmd_comp: CommandCom
         entity, InstructionComponent)
     instruction = instruction_comp.render_instruction
 
+    parameters_comp = component_manager.get_component(
+        entity, ParametersComponent)
+    parameters = parameters_comp.render_parameters
+
     labels = re.findall(r':([\w-]+):', instruction)
     if labels:
         return
 
-    model = get_model(component_manager, cmd_comp.parameters, 'llm')
+    model = get_model(component_manager, parameters, 'llm')
 
-    query, key = build_query(instruction, cmd_comp.parameters, model)
-    cache_value = llm_cache.get(key)
+    query, query_key = build_query(instruction, parameters, model.name)
+    cache_value = llm_cache.get(query_key)
     if cache_value and not cache_value.rate_limited:
         rendered_text = cache_value.response
     else:
-        model = get_model(component_manager, cmd_comp.parameters, 'llm')
-
         rate_limited, rendered_text = call_llm(
-            instruction, cmd_comp.parameters, Model(name=model, api_key='your-api-key-here'))
-        llm_cache[key] = LLMCacheValue(rendered_text, rate_limited)
+            instruction, parameters, model)
+        llm_cache[query_key] = LLMCacheValue(rendered_text, rate_limited)
         write_params = next(
-            (param[1] for param in cmd_comp.parameters if param[0] == 'write'), None)
+            (param[1] for param in parameters if param[0] == 'write'), None)
         if write_params:
             write_to_file(write_params[0], rendered_text)
 
@@ -197,9 +209,31 @@ class CommandSystem:
                         entity, InstructionComponent).render_instruction)
                     continue
 
+            if component_manager.has_component(entity, ParametersComponent):
+                
+                parameters = component_manager.get_component(
+                    entity, ParametersComponent).render_parameters
+                
+                has_unpopulated_embedding_in_parameters = False
+                for parameter in parameters:
+                    for parameter_val in parameter[1]:
+                        labels = re.findall(r':([\w-]+):', parameter_val)
+                        if labels:
+                            set_rendered_text_component(
+                                component_manager, entity, '?' + component_manager.get_component(entity, CommandComponent).command)
+                            has_unpopulated_embedding_in_parameters = True
+                            break
+                        if has_unpopulated_embedding_in_parameters:
+                            break
+                    if has_unpopulated_embedding_in_parameters:
+                        break
+                if has_unpopulated_embedding_in_parameters:
+                    continue
+
             match cmd_comp.command:
                 case "insert":
-                    handle_insert(entity, component_manager, cmd_comp)
+                    parameters = component_manager.get_component(entity, ParametersComponent)
+                    handle_insert(entity, component_manager, parameters)
                 case "gen":
                     handle_gen(entity, component_manager,
                                cmd_comp, self.llm_cache)

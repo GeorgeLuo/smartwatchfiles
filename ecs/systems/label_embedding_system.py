@@ -1,7 +1,10 @@
 import re
+from typing import List, Tuple
+from ecs.components.command_component import CommandComponent
 from ecs.components.instruction_component import InstructionComponent, set_instruction
 from ecs.components.linked_entities_by_embedding_component import add_linked_label, embeddings_have_changed
 from ecs.components.label_components import get_replacement_text_by_label
+from ecs.components.parameters_component import ParametersComponent
 from ecs.components.rendered_text_component import RenderedTextComponent, set_rendered_text_component
 from ecs.components.text_content_component import TextContentComponent
 from ecs.managers.component_manager import ComponentManager, Entity
@@ -74,6 +77,37 @@ def process_labels_in_instruction(component_manager: ComponentManager, entity: E
                              label, replacement_text)
             set_instruction(component_manager, entity, base_text)
 
+def process_labels_in_parameters(component_manager: ComponentManager, entity: Entity, parameters: List[Tuple[str, List[str]]]) -> List[Tuple[str, List[str]]]:
+    """
+    Processes labels in the given command parameters and updates the command component.
+
+    Args:
+        component_manager (ComponentManager): The manager handling components.
+        entity (Entity): The entity whose components are being managed.
+        parameters (List[Tuple[str, List[str]]]): The command parameters containing labels to be processed.
+
+    Returns:
+        List[Tuple[str, List[str]]]: The updated command parameters.
+    """
+    updated_parameters = []
+    for parameter in parameters:
+        param_name, param_values = parameter
+        updated_values = []
+        for parameter_val in param_values:
+            labels = re.findall(r':([\w.-]+):', parameter_val)
+            for label in labels:
+                replacement_text = get_replacement_text_by_label(
+                    component_manager, label)
+                if replacement_text:
+                    parameter_val = re.sub(rf':{label}:', replacement_text, parameter_val)
+                    add_linked_label(component_manager, entity, label, replacement_text)
+            updated_values.append(parameter_val)
+        updated_parameters.append((param_name, updated_values))
+    component_manager.get_component(entity, ParametersComponent).render_parameters = updated_parameters
+
+def embeddings_in_parameters_have_changed(component_manager: ComponentManager, entity: Entity):
+    
+    pass
 
 class LabelEmbeddingSystem():
     """
@@ -111,3 +145,16 @@ class LabelEmbeddingSystem():
                     entity, InstructionComponent).render_instruction
 
             process_labels_in_instruction(component_manager, entity, base_text)
+
+        # For entities with ParametersComponent, update the parameters with embedded references
+        entities = component_manager.get_entities_with_component(ParametersComponent)
+        for entity in entities:
+            parameters_component = component_manager.get_component(entity, ParametersComponent)
+            if embeddings_have_changed(component_manager, entity):
+                base_parameters = parameters_component.parameters
+            else:
+                base_parameters = parameters_component.render_parameters
+
+
+            process_labels_in_parameters(component_manager, entity, base_parameters)
+        #     command_component.parameters = updated_parameters
