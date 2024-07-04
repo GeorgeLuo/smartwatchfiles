@@ -100,7 +100,8 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         entity2 = MagicMock(spec=Entity)
         component_manager.get_entities_with_component.side_effect = [
             [entity1, entity2],  # First call for TextContentComponent
-            [entity1]            # Second call for InstructionComponent
+            [entity1],            # Second call for InstructionComponent
+            [entity1, entity2]  # First call for TextContentComponent
         ]
 
         # Mock reset_text_if_embeddings_changed

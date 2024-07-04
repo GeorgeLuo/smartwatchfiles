@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
+from command_handlers.llm import Model
+from ecs.components.parameters_component import ParametersComponent
 from ecs.systems.command_system import (
     get_model, handle_insert, handle_run, handle_gen, write_to_file, CommandSystem, LLMCacheValue
 )
@@ -19,25 +21,40 @@ class TestCommandSystem(unittest.TestCase):
             command='insert', parameters=[('param1', ['value1'])])
         self.instruction_comp = InstructionComponent(
             instruction='echo Hello World')
-        self.component_manager.get_component.side_effect = lambda entity, comp: self.instruction_comp if comp == InstructionComponent else self.cmd_comp
+        self.parameters_comp = ParametersComponent(
+            parameters=[('param1', ['value1'])])
+
+        def get_component_side_effect(entity, comp):
+            if comp == InstructionComponent:
+                return self.instruction_comp
+            elif comp == CommandComponent:
+                return self.cmd_comp
+            elif comp == ParametersComponent:
+                return self.parameters_comp
+            else:
+                return None
+
+        self.component_manager.get_component.side_effect = get_component_side_effect
 
     def test_get_model_with_latest_parameter(self):
-        parameters = [('llm', ['model1'])]
-        model = get_model(self.component_manager, parameters, 'llm')
-        self.assertEqual(model, 'model1')
+        parameters = [('llm', ['model1']), ('llm-api-key', ['api-key'])]
+        model = get_model(self.component_manager, parameters)
+        self.assertEqual(model.api_key, 'api-key')
+        self.assertEqual(model.name, 'model1')
 
     @patch('ecs.systems.command_system.get_config')
     def test_get_model_with_config(self, mock_get_config):
         mock_get_config.return_value = 'model2'
         parameters = []
-        model = get_model(self.component_manager, parameters, 'llm')
-        self.assertEqual(model, 'model2')
+        model = get_model(self.component_manager, parameters)
+        self.assertEqual(model.name, 'model2')
 
     @patch('ecs.systems.command_system.handle_insert_command')
     @patch('ecs.systems.command_system.set_rendered_text_component')
     def test_handle_insert(self, mock_set_rendered_text_component, mock_handle_insert_command):
         mock_handle_insert_command.return_value = 'Rendered Text'
-        handle_insert(self.entity, self.component_manager, self.cmd_comp)
+        handle_insert(self.entity, self.component_manager,
+                      self.parameters_comp)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Rendered Text')
 
@@ -67,14 +84,15 @@ class TestCommandSystem(unittest.TestCase):
 
     @patch('ecs.systems.command_system.call_llm')
     @patch('ecs.systems.command_system.build_query')
+    @patch('ecs.systems.command_system.get_model')
     @patch('ecs.systems.command_system.set_rendered_text_component')
-    def test_handle_gen(self, mock_set_rendered_text_component, mock_build_query, mock_call_llm):
+    def test_handle_gen(self, mock_set_rendered_text_component, mock_get_model, mock_build_query, mock_call_llm):
+        mock_get_model.return_value = Model(name='', api_key='')
         mock_build_query.return_value = ('query', 'key')
         mock_call_llm.return_value = (False, 'Generated Text')
         llm_cache = {}
 
-        handle_gen(self.entity, self.component_manager,
-                   self.cmd_comp, llm_cache)
+        handle_gen(self.entity, self.component_manager, llm_cache)
         mock_set_rendered_text_component.assert_called_with(
             self.component_manager, self.entity, 'Generated Text')
 
