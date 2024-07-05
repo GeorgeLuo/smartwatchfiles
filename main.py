@@ -9,9 +9,11 @@ from ecs.ecs_app import ECSApp
 from ecs.systems.generator_parsing_system import GeneratorParsingSystem
 from ecs.systems.label_embedding_system import LabelEmbeddingSystem
 from ecs.systems.command_system import CommandSystem
+from ecs.systems.label_processing_system import LabelProcessingSystem
 from ecs.systems.render_system import RenderSystem
 
 from ecs.event_bus import EventBus
+from ecs.systems.visibility_system import VisibilitySystem
 from filewatcher import FileWatcher
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -60,8 +62,10 @@ if __name__ == "__main__":
     app = ECSApp()
 
     app.add_system(GeneratorParsingSystem(event_bus))
+    app.add_system(LabelProcessingSystem())
     app.add_system(LabelEmbeddingSystem())
     app.add_system(CommandSystem())
+    app.add_system(VisibilitySystem())
     app.add_system(RenderSystem(generated_file))
 
     event_bus.push_event(
