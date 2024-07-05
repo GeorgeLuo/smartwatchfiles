@@ -86,22 +86,29 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         mock_set_instruction.assert_called_with(
             component_manager, entity, base_text)
 
+    @patch('ecs.systems.label_embedding_system.application_state_stable')
+    @patch('ecs.systems.label_embedding_system.set_embeddings_changed')
     @patch('ecs.systems.label_embedding_system.reset_text_if_embeddings_changed')
     @patch('ecs.systems.label_embedding_system.process_labels_in_text')
     @patch('ecs.systems.label_embedding_system.process_labels_in_instruction')
     @patch('ecs.systems.label_embedding_system.embeddings_have_changed')
-    def test_label_embedding_system_update(self, mock_embeddings_have_changed, mock_process_labels_in_instruction, mock_process_labels_in_text, mock_reset_text_if_embeddings_changed):
+    def test_label_embedding_system_update(self, mock_embeddings_have_changed, mock_process_labels_in_instruction,
+                                           mock_process_labels_in_text, mock_reset_text_if_embeddings_changed,
+                                           mock_set_embeddings_changed, mock_application_state_stable):
         entity_manager = MagicMock(spec=EntityManager)
         component_manager = MagicMock(spec=ComponentManager)
         system = LabelEmbeddingSystem()
+
+        # Mock application_state_stable to return False so the function proceeds
+        mock_application_state_stable.return_value = False
 
         # Mock entities with TextContentComponent
         entity1 = MagicMock(spec=Entity)
         entity2 = MagicMock(spec=Entity)
         component_manager.get_entities_with_component.side_effect = [
             [entity1, entity2],  # First call for TextContentComponent
-            [entity1],            # Second call for InstructionComponent
-            [entity1, entity2]  # First call for TextContentComponent
+            [entity1],           # Second call for InstructionComponent
+            [entity1, entity2]   # Third call for ParametersComponent
         ]
 
         # Mock reset_text_if_embeddings_changed
@@ -111,7 +118,9 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
         mock_embeddings_have_changed.return_value = True
 
         # Mock get_component for InstructionComponent
-        component_manager.get_component.return_value.instruction = "Instruction Text"
+        instruction_component_mock = MagicMock()
+        instruction_component_mock.instruction = "Instruction Text"
+        component_manager.get_component.return_value = instruction_component_mock
 
         system.update(entity_manager, component_manager)
 
@@ -130,6 +139,10 @@ class TestLabelEmbeddingSystem(unittest.TestCase):
             entity1, InstructionComponent)
         mock_process_labels_in_instruction.assert_any_call(
             component_manager, entity1, "Instruction Text")
+
+        # Check that set_embeddings_changed was called
+        mock_set_embeddings_changed.assert_called_once_with(
+            component_manager, False)
 
 
 if __name__ == '__main__':
