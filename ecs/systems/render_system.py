@@ -1,12 +1,15 @@
 from typing import Set, Dict
+from ecs.components.application_metadata_component import ApplicationMetadataComponent, changes_made
 from ecs.components.index_component import IndexComponent
 from ecs.components.label_components import OpeningLabelComponent
 from ecs.components.mark_for_deletion_component import MarkedForDeletionComponent
 from ecs.components.rendered_text_component import RenderedTextComponent
 from ecs.components.raw_text_component import RawTextComponent
 from ecs.components.text_content_component import TextContentComponent
+from ecs.components.visibility_component import InFocusComponent
 from ecs.managers.component_manager import ComponentManager, Entity
 from ecs.managers.entity_manager import EntityManager
+
 
 def get_in_focus_entities(component_manager: ComponentManager) -> Set[Entity]:
     """
@@ -32,6 +35,11 @@ def get_in_focus_entities(component_manager: ComponentManager) -> Set[Entity]:
             in_focus.add(entity)
 
     return in_focus
+
+
+def get_in_focus_entities_v2(component_manager: ComponentManager) -> Set[Entity]:
+    return component_manager.get_entities_with_component(InFocusComponent)
+    pass
 
 
 def handle_marked_for_deletion_entities(entity_manager: EntityManager, component_manager: ComponentManager):
@@ -144,6 +152,7 @@ class RenderSystem():
     def __init__(self, generated_file):
         self.rendered_doc = None
         self.generated_file = generated_file
+        self.render_count = 0
         pass
 
     def update(self, entity_manager: EntityManager, component_manager: ComponentManager):
@@ -166,7 +175,7 @@ class RenderSystem():
             RawTextComponent).copy()
 
         # Get entities that are in focus
-        in_focus_entities = get_in_focus_entities(component_manager)
+        in_focus_entities = get_in_focus_entities_v2(component_manager)
         if len(in_focus_entities) > 0:
             sections_map = construct_sections_map(
                 in_focus_entities, entity_manager, component_manager)
@@ -180,3 +189,16 @@ class RenderSystem():
             self.rendered_doc = rendered_doc
             with open(self.generated_file, 'w') as output_file:
                 output_file.write(rendered_doc)
+            changes_made(component_manager)
+        else:
+            metadata_entities = component_manager.get_entities_with_component(
+                ApplicationMetadataComponent)
+            if len(metadata_entities) < 1:
+                meta_entity = entity_manager.create_entity()
+                component_manager.add_component(
+                    meta_entity, ApplicationMetadataComponent())
+            else:
+                meta_entity = next(iter(metadata_entities))
+            metadata = component_manager.get_component(
+                meta_entity, ApplicationMetadataComponent)
+            metadata.render_stable = True

@@ -1,5 +1,6 @@
 import re
 from typing import List, Tuple
+from ecs.components.application_metadata_component import application_state_stable, set_embeddings_changed
 from ecs.components.command_component import CommandComponent
 from ecs.components.instruction_component import InstructionComponent, set_instruction
 from ecs.components.linked_entities_by_embedding_component import add_linked_label, embeddings_have_changed
@@ -105,9 +106,6 @@ def process_labels_in_parameters(component_manager: ComponentManager, entity: En
         updated_parameters.append((param_name, updated_values))
     component_manager.get_component(entity, ParametersComponent).render_parameters = updated_parameters
 
-def embeddings_in_parameters_have_changed(component_manager: ComponentManager, entity: Entity):
-    
-    pass
 
 class LabelEmbeddingSystem():
     """
@@ -125,6 +123,11 @@ class LabelEmbeddingSystem():
             entity_manager (EntityManager): The manager handling entities.
             component_manager (ComponentManager): The manager handling components.
         """
+
+        if application_state_stable(component_manager):
+            return
+        set_embeddings_changed(component_manager, False)
+
         # For entities with TextContentComponents, replace embedded references with the labeled section text
         entities = component_manager.get_entities_with_component(
             TextContentComponent)
@@ -157,4 +160,3 @@ class LabelEmbeddingSystem():
 
 
             process_labels_in_parameters(component_manager, entity, base_parameters)
-        #     command_component.parameters = updated_parameters

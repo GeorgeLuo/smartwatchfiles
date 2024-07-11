@@ -126,9 +126,16 @@ def call_llm(instruction: str, parameters: List[Tuple[str, List[str]]], model: M
     # Check if code extraction is needed
     extract_code = should_extract_code(parameters)
 
+    # Extract max_tokens if present
+    max_tokens = None
+    for param, values in parameters:
+        if param == "max-tokens" and values:
+            max_tokens = int(values[0])
+            break
+
     try:
         # Call the LLM API
-        rendered_text = call_llm_api(model, query)
+        rendered_text = call_llm_api(model, query, max_tokens=max_tokens)
 
         last_call_time = current_time
 
@@ -172,13 +179,14 @@ def should_extract_code(parameters: List[Tuple[str, List[str]]]) -> bool:
     return any(param[0] == "extract" and "code" in param[1] for param in parameters)
 
 
-def call_llm_api(model: Model, query: str) -> str:
+def call_llm_api(model: Model, query: str, max_tokens: int = None) -> str:
     """
     Calls the LLM API and returns the response.
 
     Args:
         model (Model): The model configuration containing the name and API key.
         query (str): The query string to be sent to the LLM.
+        max_tokens (int, optional): The maximum number of tokens to generate. Defaults to None.
 
     Returns:
         str: The response text from the LLM.
@@ -188,13 +196,17 @@ def call_llm_api(model: Model, query: str) -> str:
     """
     if model.name.startswith('gpt'):
         client = OpenAI(api_key=model.api_key)
-        response = client.chat.completions.create(
-            model=model.name,
-            messages=[
+        request_payload = {
+            "model": model.name,
+            "messages": [
                 {"role": "user", "content": query},
             ],
-            temperature=0,
-        )
+            "temperature": 0,
+        }
+        if max_tokens is not None:
+            request_payload["max_tokens"] = max_tokens
+
+        response = client.chat.completions.create(**request_payload)
         return response.choices[0].message.content
     else:
         raise ValueError(f"Unsupported model: {model.name}")
