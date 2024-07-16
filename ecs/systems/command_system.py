@@ -3,35 +3,23 @@ import re
 import shlex
 import subprocess
 from typing import List, Optional, Tuple
+
+from bs4 import BeautifulSoup
+import requests
 from command_handlers.insert import handle_insert_command
-from command_handlers.llm import Model, build_query, call_llm
-from ecs.components.command_component import CommandComponent, get_latest_parameter
+from command_handlers.llm import Model, build_query, call_llm, generate_readable
+from ecs.components.command_component import CommandComponent
 from ecs.components.instruction_component import InstructionComponent
 from ecs.components.parameters_component import ParametersComponent
 from ecs.components.rendered_text_component import set_rendered_text_component
 from ecs.managers.component_manager import ComponentManager, Entity
 from ecs.managers.entity_manager import EntityManager
-from ecs.utils.config_util import get_config
+from ecs.utils.config_util import get_latest_or_config, get_latest_parameter
 import hashlib
 import json
 
-
-def get_latest_or_config(parameters: List[Tuple[str, List[str]]], key: str, component_manager: ComponentManager) -> Optional[str]:
-    """
-    Retrieve the latest parameter value or config value for the given key.
-
-    Args:
-        parameters (List[Tuple[str, List[str]]]): List of parameters.
-        key (str): The key to look up.
-        component_manager (ComponentManager): The component manager instance.
-
-    Returns:
-        Optional[str]: The latest parameter value or config value, or None if not found.
-    """
-    val = get_latest_parameter(parameters, key)
-    if not val:
-        val = get_config(component_manager, key)
-    return val
+from ecs.utils.files_util import append_to_file, write_to_file
+from ecs.utils.web_util import download_and_parse
 
 
 def get_model(component_manager: ComponentManager, parameters: List[Tuple[str, List[str]]]) -> Optional[Model]:
@@ -142,14 +130,14 @@ def handle_run(entity: Entity, component_manager: ComponentManager, run_cache: d
         set_rendered_text_component(component_manager, entity, error_message)
 
 
-def handle_gen(entity, component_manager: ComponentManager, llm_cache: dict):
+def handle_gen(entity, component_manager: ComponentManager, gen_cache: dict, web_cache: dict):
     """
     Handle the 'gen' command by generating text using a language model and updating the rendered text component.
 
     Args:
         entity: The entity to which the command belongs.
         component_manager (ComponentManager): The component manager instance.
-        llm_cache (dict): Cache for language model responses.
+        gen_cache (dict): Cache for language model responses.
     """
     instruction_comp = component_manager.get_component(
         entity, InstructionComponent)
@@ -166,17 +154,31 @@ def handle_gen(entity, component_manager: ComponentManager, llm_cache: dict):
     model = get_model(component_manager, parameters)
 
     query, query_key = build_query(instruction, parameters, model.name)
-    cache_value = llm_cache.get(query_key)
+    cache_value = gen_cache.get(query_key)
+
     if cache_value and not cache_value.rate_limited:
         rendered_text = cache_value.response
     else:
-        rate_limited, rendered_text = call_llm(
-            instruction, parameters, model)
+        if instruction == 'web':
+            link = get_latest_parameter(parameters, 'link')
 
-        if rate_limited:
-            pass
+            if link in web_cache:
+                site_text = web_cache[link]
+            else:
+                site_text = download_and_parse(link)
+                web_cache[link] = site_text
 
-        llm_cache[query_key] = LLMCacheValue(rendered_text, rate_limited)
+            parse = get_latest_parameter(parameters, 'parse')
+            if parse == 'readable':
+                error, rendered_text = generate_readable(
+                    site_text, parameters, model)
+            else:
+                error, rendered_text = (False, site_text)
+        else:
+            error, rendered_text = call_llm(
+                instruction, parameters, model)
+
+        gen_cache[query_key] = LLMCacheValue(rendered_text, error)
         write_params = next(
             (param[1] for param in parameters if param[0] == 'write'), None)
         if write_params:
@@ -190,46 +192,17 @@ def handle_gen(entity, component_manager: ComponentManager, llm_cache: dict):
     set_rendered_text_component(component_manager, entity, rendered_text)
 
 
-def append_to_file(file_path: str, content: str):
-    """
-    Append the given content to a file as a new line at the specified file path.
+def handle_web(entity, component_manager: ComponentManager, web_cache: dict):
+    # get the url from the instruction component
+    instruction = component_manager.get_component(
+        entity, InstructionComponent).render_instruction
 
-    Args:
-        file_path (str): The path to the file.
-        content (str): The content to append to the file.
-    """
-    try:
-        directory = os.path.dirname(file_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
+    parameters_comp = component_manager.get_component(
+        entity, ParametersComponent)
+    parameters = parameters_comp.render_parameters
 
-        with open(file_path, 'a') as file:
-            file.write('\n' + content)
-
-        print(f"Successfully appended content to {file_path}")
-    except IOError as e:
-        print(f"An error occurred while appending to file: {e}")
-
-
-def write_to_file(file_path: str, content: str):
-    """
-    Write the given content to a file at the specified file path.
-
-    Args:
-        file_path (str): The path to the file.
-        content (str): The content to write to the file.
-    """
-    try:
-        directory = os.path.dirname(file_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
-
-        with open(file_path, 'w') as file:
-            file.write(content)
-
-        print(f"Successfully wrote content to {file_path}")
-    except IOError as e:
-        print(f"An error occurred while writing to file: {e}")
+    site_text = download_and_parse(instruction, parameters)
+    set_rendered_text_component(component_manager, entity, site_text)
 
 
 class LLMCacheValue:
@@ -251,12 +224,13 @@ class CommandSystem:
     The CommandSystem class is responsible for processing commands for entities.
 
     Attributes:
-        llm_cache (dict): Cache for language model responses.
+        gen_cache (dict): Cache for language model responses.
     """
 
     def __init__(self) -> None:
-        self.llm_cache = {}
+        self.gen_cache = {}
         self.run_cache = {}
+        self.web_cache = {}
 
     def update(self, entity_manager: EntityManager, component_manager: ComponentManager):
         """
@@ -313,8 +287,11 @@ class CommandSystem:
                         entity, ParametersComponent)
                     handle_insert(entity, component_manager, parameters)
                 case "gen":
-                    handle_gen(entity, component_manager, self.llm_cache)
+                    handle_gen(entity, component_manager,
+                               self.gen_cache, self.web_cache)
                 case "run":
                     handle_run(entity, component_manager, self.run_cache)
+                case "web":
+                    handle_web(entity, component_manager, self.web_cache)
                 case _:
                     pass
