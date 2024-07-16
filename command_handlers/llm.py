@@ -94,7 +94,33 @@ def extract_code_blocks(rendered_text: str) -> str:
     return extracted_code
 
 
-def call_llm(instruction: str, parameters: List[Tuple[str, List[str]]], model: Model):
+def generate_readable(text: str, parameters: List[Tuple[str, List[str]]], model: Model) -> Tuple[bool, str]:
+    """
+    Generates a readable version of the provided HTML text by calling the LLM with specific instructions.
+
+    Args:
+        text (str): The HTML text to be processed.
+        parameters (List[Tuple[str, List[str]]]): A list of parameters where each parameter is a tuple
+                                                  containing the parameter name and a list of values.
+        model (Model): The model configuration containing the name and API key.
+
+    Returns:
+        Tuple[bool, str]: A tuple containing a boolean indicating if an error occurred and the rendered readable text.
+    """
+
+    instruction = """render the following text extracted from html to be readable,
+    retaining details and completeness of the body while removing elements
+    that are part of the page navigation. Do not editorialize, just output the readable text."""
+    # Appending the text to the instruction
+    combined_instruction = f"{instruction}\n\n{text}"
+
+    # Calling the LLM utility function
+    error, response_text = call_llm(combined_instruction, parameters, model)
+
+    return error, response_text
+
+
+def call_llm(instruction: str, parameters: List[Tuple[str, List[str]]], model: Model) -> Tuple[bool, str]:
     """
     Calls the LLM API with the given instruction, parameters, and model configuration.
 
@@ -107,6 +133,9 @@ def call_llm(instruction: str, parameters: List[Tuple[str, List[str]]], model: M
     Returns:
         Tuple[bool, str]: A tuple containing a boolean indicating if an error occurred and the response text.
     """
+
+    # TODO: important the error signal and the rate limit signal are confused
+
     global last_call_time
     current_time = time.time()
 

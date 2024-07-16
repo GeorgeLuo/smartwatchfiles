@@ -1,5 +1,30 @@
+from typing import List, Optional, Tuple
 from ecs.components.config_component import ConfigComponent
 from ecs.managers.component_manager import ComponentManager
+
+
+def get_latest_parameter(parameters: List[Tuple[str, List[str]]], key: str) -> str:
+    for parameter in parameters:
+        if parameter[0] == key:
+            return parameter[1][-1]
+
+
+def get_latest_or_config(parameters: List[Tuple[str, List[str]]], key: str, component_manager: ComponentManager) -> Optional[str]:
+    """
+    Retrieve the latest parameter value or config value for the given key.
+
+    Args:
+        parameters (List[Tuple[str, List[str]]]): List of parameters.
+        key (str): The key to look up.
+        component_manager (ComponentManager): The component manager instance.
+
+    Returns:
+        Optional[str]: The latest parameter value or config value, or None if not found.
+    """
+    val = get_latest_parameter(parameters, key)
+    if not val:
+        val = get_config(component_manager, key)
+    return val
 
 
 def get_config(component_manager: ComponentManager, config_key: str) -> str:
