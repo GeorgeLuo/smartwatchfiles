@@ -2,6 +2,7 @@ import hashlib
 import logging
 import threading
 from typing import List
+from ecs.components.application_metadata_component import changes_made
 from ecs.components.command_component import CommandComponent
 from ecs.components.config_component import ConfigComponent
 from ecs.components.index_component import IndexComponent
@@ -205,11 +206,13 @@ class GeneratorParsingSystem():
         Args:
             entity_manager (EntityManager): The entity manager to manage entities.
             component_manager (ComponentManager): The component manager to manage components.
-        """
+        """        
         events = self.event_bus.get_events()
         for event_type, event_data in events:
             if event_type == "file_modified":
                 # Handle file modified event
+
+                changes_made(component_manager)
                 self.handle_file_modified(
                     event_data, entity_manager, component_manager)
 

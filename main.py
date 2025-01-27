@@ -9,6 +9,7 @@ from ecs.ecs_app import ECSApp
 from ecs.systems.generator_parsing_system import GeneratorParsingSystem
 from ecs.systems.label_embedding_system import LabelEmbeddingSystem
 from ecs.systems.command_system import CommandSystem
+from ecs.systems.label_processing_system import LabelProcessingSystem
 from ecs.systems.render_system import RenderSystem
 
 from ecs.event_bus import EventBus
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     app = ECSApp()
 
     app.add_system(GeneratorParsingSystem(event_bus))
+    app.add_system(LabelProcessingSystem())
     app.add_system(LabelEmbeddingSystem())
     app.add_system(CommandSystem())
     app.add_system(RenderSystem(generated_file))

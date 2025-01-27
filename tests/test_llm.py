@@ -15,7 +15,7 @@ class TestLLMHandlers(unittest.TestCase):
         self.parameters = [("file", ["test_file.txt"]), ("extract", ["code"])]
 
     @patch("builtins.open", new_callable=mock_open, read_data="file content")
-    def test_append_file_contents_to_query(self):
+    def test_append_file_contents_to_query(self, mock_file):
         query = "Initial query"
         updated_query = append_file_contents_to_query(query, self.parameters)
         self.assertIn("file content", updated_query)
@@ -58,7 +58,7 @@ class TestLLMHandlers(unittest.TestCase):
 
     @patch("command_handlers.llm.call_llm_api", return_value="API response")
     @patch("command_handlers.llm.time.time", return_value=100)
-    def test_call_llm(self):
+    def test_call_llm(self, mock_time, mock_call_llm_api):
         self.parameters = []
         command_handlers.llm.last_call_time = 80
         error, response = call_llm(
@@ -68,7 +68,7 @@ class TestLLMHandlers(unittest.TestCase):
 
     @patch("command_handlers.llm.call_llm_api", side_effect=Exception("API error"))
     @patch("command_handlers.llm.time.time", return_value=100)
-    def test_call_llm_with_exception(self):
+    def test_call_llm_with_exception(self, mock_time, mock_call_llm_api):
         self.parameters = []
         command_handlers.llm.last_call_time = 80
         error, response = call_llm(
@@ -77,7 +77,7 @@ class TestLLMHandlers(unittest.TestCase):
         self.assertIn("Error: API error", response)
 
     @patch("command_handlers.llm.is_rate_limited", return_value=True)
-    def test_call_llm_rate_limited(self):
+    def test_call_llm_rate_limited(self, mock_is_rate_limited):
         error, response = call_llm(
             self.instruction, self.parameters, self.model)
         self.assertTrue(error)

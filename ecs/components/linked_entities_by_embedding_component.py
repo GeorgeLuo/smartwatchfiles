@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+from ecs.components.application_metadata_component import set_embeddings_changed
 from ecs.components.label_components import get_replacement_text_by_label
 from ecs.managers.component_manager import ComponentManager, Entity
 
@@ -41,6 +42,7 @@ def embeddings_have_changed(component_manager: ComponentManager, entity: Entity)
             current_linked_text = get_replacement_text_by_label(
                 component_manager, linked_label)
             if linked_text != current_linked_text:
+                set_embeddings_changed(component_manager, True)
                 return True
     return False
 

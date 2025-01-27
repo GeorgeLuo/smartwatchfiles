@@ -1,3 +1,4 @@
+import time
 from ecs.event_bus import EventBus
 from ecs.managers.component_manager import ComponentManager
 from ecs.managers.entity_manager import EntityManager
