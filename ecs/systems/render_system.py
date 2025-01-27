@@ -12,34 +12,7 @@ from ecs.managers.entity_manager import EntityManager
 
 
 def get_in_focus_entities(component_manager: ComponentManager) -> Set[Entity]:
-    """
-    Get entities labeled with focus.
-
-    Business Logic:
-    - This function retrieves all entities that have the `OpeningLabelComponent` and checks if they are labeled with 'focus'.
-    - Entities with the 'focus' label are added to the `in_focus` set.
-
-    Args:
-        component_manager (ComponentManager): The component manager to manage components.
-
-    Returns:
-        Set[Entity]: of entities that are in focus.
-    """
-    in_focus = set()
-
-    entities = component_manager.get_entities_with_component(
-        OpeningLabelComponent)
-    for entity in entities:
-        comp = component_manager.get_component(entity, OpeningLabelComponent)
-        if 'focus' in comp.names:
-            in_focus.add(entity)
-
-    return in_focus
-
-
-def get_in_focus_entities_v2(component_manager: ComponentManager) -> Set[Entity]:
     return component_manager.get_entities_with_component(InFocusComponent)
-    pass
 
 
 def handle_marked_for_deletion_entities(entity_manager: EntityManager, component_manager: ComponentManager):
@@ -175,7 +148,7 @@ class RenderSystem():
             RawTextComponent).copy()
 
         # Get entities that are in focus
-        in_focus_entities = get_in_focus_entities_v2(component_manager)
+        in_focus_entities = get_in_focus_entities(component_manager)
         if len(in_focus_entities) > 0:
             sections_map = construct_sections_map(
                 in_focus_entities, entity_manager, component_manager)
