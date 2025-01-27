@@ -110,7 +110,7 @@ def generate_readable(text: str, parameters: List[Tuple[str, List[str]]], model:
 
     instruction = """render the following text extracted from html to be readable,
     retaining details and completeness of the body while removing elements
-    that are part of the page navigation. Do not editorialize, just output the readable text."""
+    that are part of the page navigation. Do not editorialize, just output the readable text. Do not truncate the contents of the text, show complete lists, tables, etc."""
     # Appending the text to the instruction
     combined_instruction = f"{instruction}\n\n{text}"
 

@@ -39,7 +39,7 @@ class WebScraper:
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
 
-            time.sleep(3)  # Adjust this based on the website's load time
+            time.sleep(5)  # Adjust this based on the website's load time
 
             page_source = self.driver.page_source
 

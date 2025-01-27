@@ -4,8 +4,6 @@ import shlex
 import subprocess
 from typing import List, Optional, Tuple
 
-from bs4 import BeautifulSoup
-import requests
 from command_handlers.insert import handle_insert_command
 from command_handlers.llm import Model, build_query, call_llm, generate_readable
 from ecs.components.command_component import CommandComponent
